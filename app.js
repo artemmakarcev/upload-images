@@ -1,5 +1,5 @@
-import firebase from 'firebase/app'
-import 'firebase/storage'
+import { initializeApp } from 'firebase/app'
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import {upload} from './upload.js'
 
 
@@ -12,17 +12,21 @@ const firebaseConfig = {
   appId: "1:88071581063:web:26caeb285967172a2fb722"
 }
 
-firebase.initializeApp(firebaseConfig)
+const firebase = initializeApp(firebaseConfig)
 
-const storage = firebase.storage()
+const storage = getStorage(firebase)
+
+const metadata = {
+  contentType: 'image/jpeg',
+}
 
 upload('#file', {
   multi: true,
   accept: ['.png', '.jpg', '.jpeg', '.gif'],
   onUpload(files, blocks) {
     files.forEach((file, index) => {
-      const ref = storage.ref(`images/${file.name}`)
-      const task = ref.put(file)
+      const storageRef = ref(storage, `images/${file.name}`)
+      const task = uploadBytesResumable(storageRef, file, metadata)
 
       task.on('state_changed', snapshot => {
         const percentage = ((snapshot.bytesTransferred / snapshot.totalBytes) * 100).toFixed(0) + '%'
@@ -32,7 +36,7 @@ upload('#file', {
       }, error => {
         console.log(error)
       }, () => {
-        task.snapshot.ref.getDownloadURL().then(url => {
+        getDownloadURL(task.snapshot.ref).then((url) => {
           console.log('Download URL', url)
         })
       })
